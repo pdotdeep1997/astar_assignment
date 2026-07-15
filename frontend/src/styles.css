@@ -45,6 +45,17 @@ header p { margin: 0 0 16px; color: var(--muted); }
 .msg.error { background: #3b1d1d; color: var(--danger); }
 .muted { color: var(--muted); }
 
+/* Live progress line: a single row whose text is replaced per update. */
+.msg.status { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.status-text { animation: fade 0.25s ease-in; }
+.spinner {
+  width: 14px; height: 14px; flex: none; border-radius: 50%;
+  border: 2px solid var(--panel-2); border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade { from { opacity: 0.3; } to { opacity: 1; } }
+
 .samples { display: flex; flex-direction: column; gap: 8px; }
 .samples button {
   text-align: left; background: var(--panel); color: var(--text);

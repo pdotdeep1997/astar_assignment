@@ -6,10 +6,13 @@ about tools, stores or the LLM provider.
 """
 from __future__ import annotations
 
+import json
+from collections.abc import Iterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.agent.report import InvestigationReport
@@ -67,9 +70,44 @@ def list_tools() -> dict[str, list[str]]:
 
 @app.post("/investigate", response_model=InvestigateResponse)
 def investigate(req: InvestigateRequest) -> InvestigateResponse:
-    """Run one incident investigation and return the structured report."""
+    """Run one incident investigation and return the structured report (blocking)."""
     assert _container is not None
     result = _container.agent.investigate(req.incident)
     return InvestigateResponse(
         report=result.report, trace=result.trace, raw_text=result.raw_text
+    )
+
+
+@app.post("/investigate/stream")
+def investigate_stream(req: InvestigateRequest) -> StreamingResponse:
+    """Stream the investigation as Server-Sent Events.
+
+    Emits `status` events as each step happens, then one `final` event carrying
+    the structured report + trace. The agent's generator is synchronous;
+    Starlette iterates it in a threadpool, so the blocking LLM calls don't stall
+    the event loop and each event flushes as soon as it's produced.
+    """
+    assert _container is not None
+
+    def event_source() -> Iterator[str]:
+        for event in _container.agent.stream(req.incident):
+            if event["type"] == "final":
+                result = event["report"]
+                payload = {
+                    "type": "final",
+                    "report": result.report.model_dump() if result.report else None,
+                    "trace": result.trace,
+                    "raw_text": result.raw_text,
+                }
+            else:
+                payload = event  # status events are already JSON-serialisable
+            yield f"data: {json.dumps(payload, default=str)}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disable proxy buffering so events flush
+        },
     )

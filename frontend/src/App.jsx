@@ -1,7 +1,7 @@
 // Chat container. Owns conversation state and delegates rendering to
 // ReportCard / ToolTrace (single responsibility per component).
 import { useState, useRef, useEffect } from "react";
-import { investigate } from "./api.js";
+import { investigateStream } from "./api.js";
 import ReportCard from "./components/ReportCard.jsx";
 import ToolTrace from "./components/ToolTrace.jsx";
 
@@ -16,11 +16,12 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("");   // live, self-replacing progress line
   const endRef = useRef(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, status]);
 
   async function send(text) {
     const incident = (text ?? input).trim();
@@ -28,12 +29,18 @@ export default function App() {
     setInput("");
     setMessages((m) => [...m, { role: "user", text: incident }]);
     setLoading(true);
+    setStatus("Starting…");
     try {
-      const data = await investigate(incident);
-      setMessages((m) => [...m, { role: "agent", data }]);
+      await investigateStream(incident, {
+        // Each status replaces the previous one — intermediate steps collapse.
+        onStatus: (message) => setStatus(message),
+        // The final event swaps the live line out for the finished report.
+        onFinal: (data) => setMessages((m) => [...m, { role: "agent", data }]),
+      });
     } catch (err) {
       setMessages((m) => [...m, { role: "error", text: err.message }]);
     } finally {
+      setStatus("");
       setLoading(false);
     }
   }
@@ -72,7 +79,12 @@ export default function App() {
           );
         })}
 
-        {loading && <div className="msg agent muted">Investigating…</div>}
+        {loading && (
+          <div className="msg agent status">
+            <span className="spinner" />
+            <span className="status-text">{status || "Investigating…"}</span>
+          </div>
+        )}
         <div ref={endRef} />
       </div>
 
