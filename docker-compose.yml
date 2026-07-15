@@ -1,0 +1,12 @@
+# Optional one-command run: `docker compose up`.
+# Reads secrets from your local .env (never baked into the image).
+services:
+  api:
+    build: .
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env
+    volumes:
+      # Persist the generated SQLite DB + vector index across restarts.
+      - ./data:/app/data

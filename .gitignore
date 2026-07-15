@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets & env
+.env
+
+# Generated data (rebuilt from the Excel dataset on startup)
+data/incident.db
+data/chroma/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+
+_archive/
