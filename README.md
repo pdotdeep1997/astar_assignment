@@ -148,7 +148,9 @@ Requires **Docker Desktop** running (`docker info` should succeed).
 
 ### Choosing the model
 
-Set `LLM_MODEL` in `.env` to any Anthropic model. The call is routed through LiteLLM, and
+Set `LLM_MODEL` in `.env` to any Anthropic model, keeping the `anthropic/`
+prefix (e.g. `anthropic/claude-opus-4-8`,
+`anthropic/claude-opus-4-8`). The call is routed through LiteLLM, and
 the agent depends only on the `LLMClient` interface — so swapping to another
 provider later would mean one new adapter, not changes across the app.
 
